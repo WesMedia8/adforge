@@ -1,43 +1,69 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { listCampaigns, getCampaign, createCampaign, updateCampaignStatus, extractCredentials } from '@/lib/meta-client';
-import { CreateCampaignPayload } from '@/lib/meta-types';
+import { createMetaClient } from '@/lib/meta-client';
+import { createClient } from '@/lib/supabase';
 
-export async function GET(req: NextRequest) {
+export async function GET(request: NextRequest) {
   try {
-    const creds = extractCredentials(req.headers);
-    const { searchParams } = new URL(req.url);
-    const campaignId = searchParams.get('id');
-    if (campaignId) {
-      const campaign = await getCampaign(creds, campaignId);
-      return NextResponse.json({ success: true, campaign });
+    const { searchParams } = new URL(request.url);
+    const userId = searchParams.get('user_id');
+
+    if (!userId) {
+      return NextResponse.json({ error: 'User ID required' }, { status: 400 });
     }
-    const campaigns = await listCampaigns(creds);
-    return NextResponse.json({ success: true, campaigns });
-  } catch (err: unknown) {
-    return NextResponse.json({ success: false, error: err instanceof Error ? err.message : 'Failed to fetch campaigns' }, { status: 500 });
+
+    const supabase = createClient();
+    const { data: connection } = await supabase
+      .from('meta_connections')
+      .select('*')
+      .eq('user_id', userId)
+      .single();
+
+    if (!connection) {
+      return NextResponse.json({ error: 'No Meta connection found' }, { status: 404 });
+    }
+
+    const metaClient = createMetaClient(connection.access_token);
+    const campaigns = await metaClient.getCampaigns(connection.ad_account_id);
+
+    return NextResponse.json(campaigns);
+  } catch (error) {
+    console.error('Error fetching campaigns:', error);
+    return NextResponse.json(
+      { error: 'Failed to fetch campaigns' },
+      { status: 500 }
+    );
   }
 }
 
-export async function POST(req: NextRequest) {
+export async function POST(request: NextRequest) {
   try {
-    const creds = extractCredentials(req.headers);
-    const body = await req.json();
-    const { action, campaignId, status, ...campaignData } = body;
-    if (action === 'update_status' && campaignId && status) {
-      const result = await updateCampaignStatus(creds, campaignId, status);
-      return NextResponse.json({ success: true, result });
+    const body = await request.json();
+    const { userId, campaignData } = body;
+
+    if (!userId) {
+      return NextResponse.json({ error: 'User ID required' }, { status: 400 });
     }
-    const payload: CreateCampaignPayload = {
-      name: campaignData.name,
-      objective: campaignData.objective || 'OUTCOME_SALES',
-      status: campaignData.status || 'PAUSED',
-      special_ad_categories: campaignData.special_ad_categories || [],
-    };
-    if (campaignData.daily_budget) payload.daily_budget = String(Math.round(Number(campaignData.daily_budget) * 100));
-    if (campaignData.lifetime_budget) payload.lifetime_budget = String(Math.round(Number(campaignData.lifetime_budget) * 100));
-    const result = await createCampaign(creds, payload);
-    return NextResponse.json({ success: true, id: result.id });
-  } catch (err: unknown) {
-    return NextResponse.json({ success: false, error: err instanceof Error ? err.message : 'Campaign operation failed' }, { status: 500 });
+
+    const supabase = createClient();
+    const { data: connection } = await supabase
+      .from('meta_connections')
+      .select('*')
+      .eq('user_id', userId)
+      .single();
+
+    if (!connection) {
+      return NextResponse.json({ error: 'No Meta connection found' }, { status: 404 });
+    }
+
+    const metaClient = createMetaClient(connection.access_token);
+    const result = await metaClient.createCampaign(connection.ad_account_id, campaignData);
+
+    return NextResponse.json(result);
+  } catch (error) {
+    console.error('Error creating campaign:', error);
+    return NextResponse.json(
+      { error: 'Failed to create campaign' },
+      { status: 500 }
+    );
   }
 }
