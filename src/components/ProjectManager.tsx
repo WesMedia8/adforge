@@ -1,174 +1,175 @@
 // ============================================
-// ProjectManager Component
+// AdForge — Project Manager Component
 // ============================================
 
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { Project } from '@/lib/types';
 
-interface Project {
-  id: string;
-  name: string;
-  client: string;
-  status: 'active' | 'completed' | 'draft';
-  adCount: number;
-  lastModified: string;
-  platform: string;
-  color: string;
+interface ProjectManagerProps {
+  isOpen: boolean;
+  onClose: () => void;
+  projects: Project[];
+  currentProject: Project | null;
+  saving: boolean;
+  loading: boolean;
+  onFetchProjects: () => Promise<void>;
+  onSaveProject: (name?: string) => Promise<void>;
+  onLoadProject: (id: string) => Promise<void>;
+  onNewProject: () => void;
 }
 
-const MOCK_PROJECTS: Project[] = [
-  {
-    id: '1',
-    name: 'Summer Campaign 2024',
-    client: 'AcmeCorp',
-    status: 'active',
-    adCount: 24,
-    lastModified: '2 hours ago',
-    platform: 'Multi-Platform',
-    color: '#6366f1',
-  },
-  {
-    id: '2',
-    name: 'Product Launch - V2',
-    client: 'TechStart',
-    status: 'active',
-    adCount: 12,
-    lastModified: '1 day ago',
-    platform: 'Instagram',
-    color: '#0891b2',
-  },
-  {
-    id: '3',
-    name: 'Holiday Retargeting',
-    client: 'RetailBrand',
-    status: 'completed',
-    adCount: 48,
-    lastModified: '1 week ago',
-    platform: 'Facebook',
-    color: '#7c3aed',
-  },
-  {
-    id: '4',
-    name: 'Q1 B2B Awareness',
-    client: 'Enterprise Co',
-    status: 'draft',
-    adCount: 6,
-    lastModified: '3 days ago',
-    platform: 'LinkedIn',
-    color: '#b45309',
-  },
-];
+export default function ProjectManager({
+  isOpen,
+  onClose,
+  projects,
+  currentProject,
+  saving,
+  loading,
+  onFetchProjects,
+  onSaveProject,
+  onLoadProject,
+  onNewProject,
+}: ProjectManagerProps) {
+  const [projectName, setProjectName] = useState('');
 
-export default function ProjectManager() {
-  const [projects] = useState<Project[]>(MOCK_PROJECTS);
-  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
-  const [filter, setFilter] = useState<'all' | 'active' | 'completed' | 'draft'>('all');
+  useEffect(() => {
+    if (isOpen) {
+      onFetchProjects();
+      setProjectName(currentProject?.name || '');
+    }
+  }, [isOpen, onFetchProjects, currentProject?.name]);
 
-  const filteredProjects = projects.filter(
-    (p) => filter === 'all' || p.status === filter
-  );
+  if (!isOpen) return null;
 
-  const statusColor = (status: Project['status']) =>
-    status === 'active'
-      ? 'text-emerald-400 bg-emerald-900/30'
-      : status === 'completed'
-      ? 'text-blue-400 bg-blue-900/30'
-      : 'text-gray-400 bg-gray-800';
+  const handleSave = async () => {
+    const name = projectName.trim() || 'Untitled Project';
+    await onSaveProject(name);
+  };
+
+  const handleNew = () => {
+    onNewProject();
+    onClose();
+  };
 
   return (
-    <div className="flex-1 flex gap-4 p-6 overflow-hidden">
-      <div className="flex-1 flex flex-col overflow-hidden">
+    <>
+      {/* Backdrop */}
+      <div
+        className="fixed inset-0 bg-black/50 z-[200]"
+        onClick={onClose}
+      />
+
+      {/* Modal */}
+      <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[460px] max-h-[80vh] bg-af-bg-secondary border border-af-border-default rounded-lg shadow-2xl z-[201] flex flex-col">
         {/* Header */}
-        <div className="flex items-center gap-3 mb-4">
-          <h2 className="font-semibold text-white">Projects</h2>
-          <div className="flex bg-gray-800 rounded-lg p-0.5">
-            {(['all', 'active', 'completed', 'draft'] as const).map((f) => (
-              <button
-                key={f}
-                onClick={() => setFilter(f)}
-                className={`text-xs px-3 py-1.5 rounded-md capitalize transition-colors ${
-                  filter === f ? 'bg-gray-700 text-white' : 'text-gray-400 hover:text-gray-300'
-                }`}
-              >
-                {f}
-              </button>
-            ))}
-          </div>
-          <div className="flex-1" />
-          <button className="bg-indigo-600 hover:bg-indigo-500 text-white text-sm px-4 py-2 rounded-lg transition-colors">
-            + New Project
+        <div className="flex items-center justify-between px-5 py-4 border-b border-af-border-subtle">
+          <h2 className="text-[14px] font-semibold text-af-text-primary">
+            Projects
+          </h2>
+          <button
+            onClick={onClose}
+            className="w-[24px] h-[24px] flex items-center justify-center rounded text-af-text-tertiary hover:text-af-text-primary hover:bg-af-bg-hover transition-all"
+          >
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M4 4l8 8M12 4l-8 8" />
+            </svg>
           </button>
         </div>
 
-        {/* Project List */}
-        <div className="space-y-3 overflow-y-auto">
-          {filteredProjects.map((project) => (
-            <div
-              key={project.id}
-              onClick={() => setSelectedProject(project)}
-              className={`rounded-xl border p-4 cursor-pointer transition-all ${
-                selectedProject?.id === project.id
-                  ? 'border-indigo-500 bg-gray-800'
-                  : 'border-gray-800 bg-gray-900 hover:border-gray-700'
-              }`}
+        {/* Save Section */}
+        <div className="px-5 py-3 border-b border-af-border-subtle">
+          <label className="block text-[10px] font-semibold text-af-text-tertiary uppercase tracking-[0.06em] mb-1.5">
+            {currentProject ? 'Update Project' : 'Save New Project'}
+          </label>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={projectName}
+              onChange={(e) => setProjectName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleSave();
+              }}
+              placeholder="Project name..."
+              className="flex-1 bg-af-bg-tertiary border border-af-border-default rounded text-af-text-primary text-[12px] px-3 py-[6px] outline-none focus:border-af-accent"
+            />
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className="px-4 py-[6px] rounded text-[11px] font-medium bg-af-accent border border-af-accent text-white hover:bg-af-accent-hover transition-all disabled:opacity-50 whitespace-nowrap"
             >
-              <div className="flex items-center gap-3">
-                <div
-                  className="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-white"
-                  style={{ backgroundColor: project.color }}
-                >
-                  {project.name[0]}
+              {saving ? 'Saving...' : currentProject ? 'Update' : 'Save'}
+            </button>
+          </div>
+        </div>
+
+        {/* New Project */}
+        <div className="px-5 py-2.5 border-b border-af-border-subtle">
+          <button
+            onClick={handleNew}
+            className="flex items-center gap-2 text-[11.5px] font-medium text-af-accent hover:text-af-text-primary transition-colors"
+          >
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M8 2v12M2 8h12" />
+            </svg>
+            New Empty Project
+          </button>
+        </div>
+
+        {/* Projects List */}
+        <div className="flex-1 overflow-y-auto px-5 py-3 min-h-0">
+          {loading && (
+            <div className="text-center text-[11px] text-af-text-tertiary py-6">
+              Loading projects...
+            </div>
+          )}
+
+          {!loading && projects.length === 0 && (
+            <div className="text-center text-[11px] text-af-text-tertiary py-6">
+              No saved projects yet.
+            </div>
+          )}
+
+          {!loading &&
+            projects.map((p) => (
+              <div
+                key={p.id}
+                onClick={() => {
+                  if (p.id) {
+                    onLoadProject(p.id);
+                    onClose();
+                  }
+                }}
+                className={`flex items-center justify-between px-3 py-2.5 rounded cursor-pointer mb-1 transition-all group ${
+                  currentProject?.id === p.id
+                    ? 'bg-af-accent-subtle border border-af-accent/20'
+                    : 'hover:bg-af-bg-hover border border-transparent'
+                }`}
+              >
+                <div>
+                  <div className="text-[12px] font-medium text-af-text-primary">
+                    {p.name}
+                  </div>
+                  <div className="text-[10px] text-af-text-tertiary mt-0.5">
+                    {p.updated_at
+                      ? new Date(p.updated_at).toLocaleDateString('en-US', {
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })
+                      : ''}
+                  </div>
                 </div>
-                <div className="flex-1">
-                  <div className="font-medium text-white">{project.name}</div>
-                  <div className="text-xs text-gray-500">{project.client} · {project.platform}</div>
-                </div>
-                <div className="text-right">
-                  <span className={`text-xs px-2 py-1 rounded-full ${statusColor(project.status)}`}>
-                    {project.status}
-                  </span>
-                  <div className="text-xs text-gray-600 mt-1">{project.lastModified}</div>
+                <div className="text-[10px] text-af-text-tertiary group-hover:text-af-accent transition-colors">
+                  {currentProject?.id === p.id ? 'Current' : 'Load →'}
                 </div>
               </div>
-            </div>
-          ))}
+            ))}
         </div>
       </div>
-
-      {/* Detail Panel */}
-      {selectedProject && (
-        <div className="w-72 bg-gray-900 rounded-xl border border-gray-800 p-5 flex flex-col gap-4">
-          <div
-            className="w-12 h-12 rounded-xl flex items-center justify-center font-bold text-white text-xl"
-            style={{ backgroundColor: selectedProject.color }}
-          >
-            {selectedProject.name[0]}
-          </div>
-          <div>
-            <h3 className="font-semibold text-white">{selectedProject.name}</h3>
-            <div className="text-sm text-gray-500">{selectedProject.client}</div>
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            <div className="bg-gray-800 rounded-lg p-3">
-              <div className="text-xs text-gray-500">Ads</div>
-              <div className="font-semibold text-white">{selectedProject.adCount}</div>
-            </div>
-            <div className="bg-gray-800 rounded-lg p-3">
-              <div className="text-xs text-gray-500">Platform</div>
-              <div className="font-semibold text-white text-xs">{selectedProject.platform}</div>
-            </div>
-          </div>
-          <div className="flex gap-2">
-            <button className="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white text-sm py-2 rounded-lg transition-colors">
-              Open
-            </button>
-            <button className="flex-1 bg-gray-700 hover:bg-gray-600 text-white text-sm py-2 rounded-lg transition-colors">
-              Duplicate
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
+    </>
   );
 }
