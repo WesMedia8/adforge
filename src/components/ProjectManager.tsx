@@ -1,115 +1,174 @@
 // ============================================
-// AdForge — Project Manager Component
+// ProjectManager Component
 // ============================================
 
 'use client';
 
 import React, { useState } from 'react';
-import { Project } from '@/lib/types';
 
-interface ProjectManagerProps {
-  projects: Project[];
-  currentProjectId: string | null;
-  onSelectProject: (id: string) => void;
-  onCreateProject: (name: string) => void;
-  onDeleteProject: (id: string) => void;
-  onClose: () => void;
+interface Project {
+  id: string;
+  name: string;
+  client: string;
+  status: 'active' | 'completed' | 'draft';
+  adCount: number;
+  lastModified: string;
+  platform: string;
+  color: string;
 }
 
-export default function ProjectManager({
-  projects,
-  currentProjectId,
-  onSelectProject,
-  onCreateProject,
-  onDeleteProject,
-  onClose,
-}: ProjectManagerProps) {
-  const [newName, setNewName] = useState('');
+const MOCK_PROJECTS: Project[] = [
+  {
+    id: '1',
+    name: 'Summer Campaign 2024',
+    client: 'AcmeCorp',
+    status: 'active',
+    adCount: 24,
+    lastModified: '2 hours ago',
+    platform: 'Multi-Platform',
+    color: '#6366f1',
+  },
+  {
+    id: '2',
+    name: 'Product Launch - V2',
+    client: 'TechStart',
+    status: 'active',
+    adCount: 12,
+    lastModified: '1 day ago',
+    platform: 'Instagram',
+    color: '#0891b2',
+  },
+  {
+    id: '3',
+    name: 'Holiday Retargeting',
+    client: 'RetailBrand',
+    status: 'completed',
+    adCount: 48,
+    lastModified: '1 week ago',
+    platform: 'Facebook',
+    color: '#7c3aed',
+  },
+  {
+    id: '4',
+    name: 'Q1 B2B Awareness',
+    client: 'Enterprise Co',
+    status: 'draft',
+    adCount: 6,
+    lastModified: '3 days ago',
+    platform: 'LinkedIn',
+    color: '#b45309',
+  },
+];
 
-  const handleCreate = () => {
-    if (!newName.trim()) return;
-    onCreateProject(newName.trim());
-    setNewName('');
-  };
+export default function ProjectManager() {
+  const [projects] = useState<Project[]>(MOCK_PROJECTS);
+  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
+  const [filter, setFilter] = useState<'all' | 'active' | 'completed' | 'draft'>('all');
+
+  const filteredProjects = projects.filter(
+    (p) => filter === 'all' || p.status === filter
+  );
+
+  const statusColor = (status: Project['status']) =>
+    status === 'active'
+      ? 'text-emerald-400 bg-emerald-900/30'
+      : status === 'completed'
+      ? 'text-blue-400 bg-blue-900/30'
+      : 'text-gray-400 bg-gray-800';
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center"
-      style={{ background: 'rgba(0,0,0,0.7)' }}
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
-    >
-      <div
-        className="bg-af-bg-secondary border border-af-border-default rounded-lg p-6 flex flex-col gap-4"
-        style={{ width: '100%', maxWidth: 480 }}
-      >
-        <div className="flex items-center justify-between">
-          <h2 className="text-[15px] font-semibold text-af-text-primary">Projects</h2>
-          <button
-            onClick={onClose}
-            className="w-7 h-7 flex items-center justify-center rounded text-af-text-tertiary hover:text-af-text-primary hover:bg-af-bg-tertiary transition-all"
-          >
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M3 3l10 10M13 3L3 13" />
-            </svg>
-          </button>
-        </div>
-
-        {/* Create new */}
-        <div className="flex gap-2">
-          <input
-            type="text"
-            value={newName}
-            onChange={(e) => setNewName(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter') handleCreate(); }}
-            placeholder="New project name..."
-            className="flex-1 bg-af-bg-tertiary border border-af-border-default rounded text-af-text-primary text-[13px] px-3 py-2 outline-none focus:border-af-accent"
-          />
-          <button
-            onClick={handleCreate}
-            disabled={!newName.trim()}
-            className="px-4 py-2 rounded text-[12px] font-medium bg-af-accent border border-af-accent text-white hover:bg-af-accent-hover transition-all disabled:opacity-40"
-          >
-            Create
-          </button>
-        </div>
-
-        {/* Project list */}
-        <div className="flex flex-col gap-1 max-h-64 overflow-y-auto">
-          {projects.length === 0 && (
-            <p className="text-[12px] text-af-text-tertiary text-center py-4">No projects yet</p>
-          )}
-          {projects.map((p) => (
-            <div
-              key={p.id}
-              className={`flex items-center justify-between px-3 py-2 rounded-md cursor-pointer transition-all ${
-                p.id === currentProjectId
-                  ? 'bg-af-accent/10 border border-af-accent/20'
-                  : 'hover:bg-af-bg-tertiary border border-transparent'
-              }`}
-              onClick={() => { onSelectProject(p.id); onClose(); }}
-            >
-              <div>
-                <p className="text-[13px] font-medium text-af-text-primary">{p.name}</p>
-                <p className="text-[10px] text-af-text-tertiary">
-                  {p.variations.length} variation{p.variations.length !== 1 ? 's' : ''} · {new Date(p.updatedAt).toLocaleDateString()}
-                </p>
-              </div>
+    <div className="flex-1 flex gap-4 p-6 overflow-hidden">
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Header */}
+        <div className="flex items-center gap-3 mb-4">
+          <h2 className="font-semibold text-white">Projects</h2>
+          <div className="flex bg-gray-800 rounded-lg p-0.5">
+            {(['all', 'active', 'completed', 'draft'] as const).map((f) => (
               <button
-                onClick={(e) => { e.stopPropagation(); onDeleteProject(p.id); }}
-                className="w-6 h-6 flex items-center justify-center rounded text-af-text-tertiary hover:text-[#ff3355] hover:bg-[rgba(255,51,85,0.1)] transition-all"
+                key={f}
+                onClick={() => setFilter(f)}
+                className={`text-xs px-3 py-1.5 rounded-md capitalize transition-colors ${
+                  filter === f ? 'bg-gray-700 text-white' : 'text-gray-400 hover:text-gray-300'
+                }`}
               >
-                <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-                  <path d="M2 4h12M5 4V2h6v2M6 7v5M10 7v5M3 4l1 10h8l1-10" />
-                </svg>
+                {f}
               </button>
+            ))}
+          </div>
+          <div className="flex-1" />
+          <button className="bg-indigo-600 hover:bg-indigo-500 text-white text-sm px-4 py-2 rounded-lg transition-colors">
+            + New Project
+          </button>
+        </div>
+
+        {/* Project List */}
+        <div className="space-y-3 overflow-y-auto">
+          {filteredProjects.map((project) => (
+            <div
+              key={project.id}
+              onClick={() => setSelectedProject(project)}
+              className={`rounded-xl border p-4 cursor-pointer transition-all ${
+                selectedProject?.id === project.id
+                  ? 'border-indigo-500 bg-gray-800'
+                  : 'border-gray-800 bg-gray-900 hover:border-gray-700'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <div
+                  className="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-white"
+                  style={{ backgroundColor: project.color }}
+                >
+                  {project.name[0]}
+                </div>
+                <div className="flex-1">
+                  <div className="font-medium text-white">{project.name}</div>
+                  <div className="text-xs text-gray-500">{project.client} · {project.platform}</div>
+                </div>
+                <div className="text-right">
+                  <span className={`text-xs px-2 py-1 rounded-full ${statusColor(project.status)}`}>
+                    {project.status}
+                  </span>
+                  <div className="text-xs text-gray-600 mt-1">{project.lastModified}</div>
+                </div>
+              </div>
             </div>
           ))}
         </div>
       </div>
+
+      {/* Detail Panel */}
+      {selectedProject && (
+        <div className="w-72 bg-gray-900 rounded-xl border border-gray-800 p-5 flex flex-col gap-4">
+          <div
+            className="w-12 h-12 rounded-xl flex items-center justify-center font-bold text-white text-xl"
+            style={{ backgroundColor: selectedProject.color }}
+          >
+            {selectedProject.name[0]}
+          </div>
+          <div>
+            <h3 className="font-semibold text-white">{selectedProject.name}</h3>
+            <div className="text-sm text-gray-500">{selectedProject.client}</div>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div className="bg-gray-800 rounded-lg p-3">
+              <div className="text-xs text-gray-500">Ads</div>
+              <div className="font-semibold text-white">{selectedProject.adCount}</div>
+            </div>
+            <div className="bg-gray-800 rounded-lg p-3">
+              <div className="text-xs text-gray-500">Platform</div>
+              <div className="font-semibold text-white text-xs">{selectedProject.platform}</div>
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <button className="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white text-sm py-2 rounded-lg transition-colors">
+              Open
+            </button>
+            <button className="flex-1 bg-gray-700 hover:bg-gray-600 text-white text-sm py-2 rounded-lg transition-colors">
+              Duplicate
+            </button>
+          </div>
+        </div>
+      )}
     </div>
-    <>
-    </>
   );
 }

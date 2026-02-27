@@ -1,48 +1,52 @@
 // ============================================
-// AdForge — Thumbnail Strip Component
+// ThumbnailStrip Component
 // ============================================
 
 'use client';
 
 import React from 'react';
-import { Variation, TemplateSettings, LayoutType } from '@/lib/types';
-import { buildAdHTML } from '@/lib/export';
 
-interface ThumbnailStripProps {
-  variations: Variation[];
-  selectedIndex: number;
-  onSelect: (index: number) => void;
-  settings: TemplateSettings;
-  layout: LayoutType;
+interface AdVariation {
+  id: string;
+  name: string;
+  headline: string;
+  color: string;
+  emoji: string;
 }
 
-export default function ThumbnailStrip({
-  variations,
-  selectedIndex,
-  onSelect,
-  settings,
-  layout,
-}: ThumbnailStripProps) {
-  const thumbScale = 80 / 1080;
+interface ThumbnailStripProps {
+  variations: AdVariation[];
+  selectedIndex: number;
+  onSelect: (index: number) => void;
+}
 
+export default function ThumbnailStrip({ variations, selectedIndex, onSelect }: ThumbnailStripProps) {
   return (
-    <div className="flex flex-col items-center gap-2 px-2 py-3 bg-af-bg-secondary border-r border-af-border-subtle overflow-y-auto">
-      {variations.map((variation, i) => {
-        const html = buildAdHTML(variation, settings, layout, thumbScale);
-        return (
-          <button
-            key={variation.id || i}
-            onClick={() => onSelect(i)}
-            className={`w-[80px] h-[80px] rounded overflow-hidden border-2 transition-all flex-shrink-0 ${
-              selectedIndex === i
-                ? 'border-af-accent'
-                : 'border-transparent hover:border-af-border-bright'
-            }`}
+    <div className="border-t border-gray-800 bg-gray-900 px-4 py-2 flex gap-2 overflow-x-auto">
+      {variations.map((variation, index) => (
+        <button
+          key={variation.id}
+          onClick={() => onSelect(index)}
+          className={`flex-shrink-0 rounded-lg overflow-hidden transition-all ${
+            selectedIndex === index
+              ? 'ring-2 ring-indigo-500 ring-offset-1 ring-offset-gray-900'
+              : 'opacity-60 hover:opacity-100'
+          }`}
+        >
+          <div
+            className="w-16 h-16 flex flex-col items-center justify-center p-1"
+            style={{ backgroundColor: variation.color }}
           >
-            <div dangerouslySetInnerHTML={{ __html: html }} />
-          </button>
-        );
-      })}
+            <div className="text-lg">{variation.emoji}</div>
+            <div className="text-white text-xs font-semibold text-center line-clamp-1 mt-0.5">
+              {variation.name}
+            </div>
+          </div>
+        </button>
+      ))}
+      <button className="flex-shrink-0 w-16 h-16 rounded-lg border-2 border-dashed border-gray-700 flex items-center justify-center text-gray-600 hover:border-gray-600 hover:text-gray-500 transition-colors">
+        +
+      </button>
     </div>
   );
 }

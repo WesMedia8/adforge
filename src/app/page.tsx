@@ -1,106 +1,151 @@
+// ============================================
+// AdForge — Main Page
+// ============================================
+
 'use client';
 
-import { useState } from 'react';
-import { ProjectSetup } from '@/components/ProjectSetup';
-import { ResearchPhase } from '@/components/ResearchPhase';
-import { AdCreationPhase } from '@/components/AdCreationPhase';
-import { ReviewPhase } from '@/components/ReviewPhase';
-import { MetaPublishPhase } from '@/components/MetaPublishPhase';
-import { useProject } from '@/hooks/useProject';
-import { Zap, ChevronRight } from 'lucide-react';
+import React, { useState, useCallback } from 'react';
+import Header, { ActiveTab } from '@/components/Header';
+import VariationsSidebar from '@/components/VariationsSidebar';
+import TemplateCustomizer from '@/components/TemplateCustomizer';
+import AdPreview from '@/components/AdPreview';
+import ThumbnailStrip from '@/components/ThumbnailStrip';
+import ExportBar from '@/components/ExportBar';
+import AIStudio from '@/components/AIStudio';
+import SmartGenerator from '@/components/SmartGenerator';
+import AdRemix from '@/components/AdRemix';
+import CompetitorSpy from '@/components/CompetitorSpy';
+import ConsumerResearch from '@/components/ConsumerResearch';
+import FrameworkSelector from '@/components/FrameworkSelector';
+import DiversityDashboard from '@/components/DiversityDashboard';
+import ProjectManager from '@/components/ProjectManager';
 
-type Phase = 'setup' | 'research' | 'create' | 'review' | 'publish';
+// ─── Types ───────────────────────────────────────────────────────────────────
 
-const phases: { id: Phase; label: string }[] = [
-  { id: 'setup', label: 'Setup' },
-  { id: 'research', label: 'Research' },
-  { id: 'create', label: 'Create' },
-  { id: 'review', label: 'Review' },
-  { id: 'publish', label: 'Publish' },
-];
+interface AdVariation {
+  id: string;
+  name: string;
+  headline: string;
+  subtext: string;
+  cta: string;
+  color: string;
+  emoji: string;
+}
+
+interface Template {
+  id: string;
+  name: string;
+  platform: string;
+  size: string;
+  layout: string;
+}
+
+// ─── Component ───────────────────────────────────────────────────────────────
 
 export default function Home() {
-  const [currentPhase, setCurrentPhase] = useState<Phase>('setup');
-  const { project, updateProject } = useProject();
+  const [activeTab, setActiveTab] = useState<ActiveTab>('create');
+  const [selectedVariation, setSelectedVariation] = useState(0);
 
-  const handlePhaseComplete = (phase: Phase) => {
-    const phaseOrder: Phase[] = ['setup', 'research', 'create', 'review', 'publish'];
-    const currentIndex = phaseOrder.indexOf(phase);
-    if (currentIndex < phaseOrder.length - 1) {
-      setCurrentPhase(phaseOrder[currentIndex + 1]);
-    }
-  };
+  const [variations, setVariations] = useState<AdVariation[]>([
+    {
+      id: '1',
+      name: 'Variation A',
+      headline: 'Transform Your Marketing',
+      subtext: 'AI-powered ad creation that converts',
+      cta: 'Get Started Free',
+      color: '#6366f1',
+      emoji: '🚀',
+    },
+    {
+      id: '2',
+      name: 'Variation B',
+      headline: 'Scale Your Campaigns',
+      subtext: 'Generate hundreds of variations instantly',
+      cta: 'Try It Now',
+      color: '#8b5cf6',
+      emoji: '⚡',
+    },
+    {
+      id: '3',
+      name: 'Variation C',
+      headline: 'Beat the Competition',
+      subtext: 'Data-driven ads that outperform',
+      cta: 'Start Today',
+      color: '#06b6d4',
+      emoji: '🎯',
+    },
+  ]);
+
+  const [template, setTemplate] = useState<Template>({
+    id: '1',
+    name: 'Social Square',
+    platform: 'Instagram',
+    size: '1080x1080',
+    layout: 'centered',
+  });
+
+  const handleVariationUpdate = useCallback(
+    (index: number, updates: Partial<AdVariation>) => {
+      setVariations((prev) =>
+        prev.map((v, i) => (i === index ? { ...v, ...updates } : v))
+      );
+    },
+    []
+  );
+
+  const currentVariation = variations[selectedVariation];
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white">
+    <div className="min-h-screen bg-gray-950 text-white flex flex-col">
       {/* Header */}
-      <header className="border-b border-gray-800 bg-gray-900">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Zap className="w-6 h-6 text-blue-500" />
-            <span className="text-xl font-bold">AdForge</span>
-          </div>
-          
-          {/* Phase Navigation */}
-          <nav className="flex items-center gap-1">
-            {phases.map((phase, index) => (
-              <div key={phase.id} className="flex items-center">
-                <button
-                  onClick={() => setCurrentPhase(phase.id)}
-                  className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
-                    currentPhase === phase.id
-                      ? 'bg-blue-600 text-white'
-                      : 'text-gray-400 hover:text-white'
-                  }`}
-                >
-                  {phase.label}
-                </button>
-                {index < phases.length - 1 && (
-                  <ChevronRight className="w-4 h-4 text-gray-600 mx-1" />
-                )}
-              </div>
-            ))}
-          </nav>
-        </div>
-      </header>
+      <Header activeTab={activeTab} onTabChange={setActiveTab} />
 
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 py-8">
-        {currentPhase === 'setup' && (
-          <ProjectSetup
-            project={project}
-            onUpdate={updateProject}
-            onComplete={() => handlePhaseComplete('setup')}
-          />
+      {/* Main content */}
+      <main className="flex-1 flex overflow-hidden">
+        {activeTab === 'create' && (
+          <>
+            {/* Left sidebar */}
+            <VariationsSidebar
+              variations={variations}
+              selectedIndex={selectedVariation}
+              onSelect={setSelectedVariation}
+              onUpdate={handleVariationUpdate}
+            />
+
+            {/* Center canvas */}
+            <div className="flex-1 flex flex-col">
+              <AdPreview variation={currentVariation} template={template} />
+              <ThumbnailStrip
+                variations={variations}
+                selectedIndex={selectedVariation}
+                onSelect={setSelectedVariation}
+              />
+            </div>
+
+            {/* Right panel */}
+            <TemplateCustomizer
+              template={template}
+              variation={currentVariation}
+              onTemplateChange={setTemplate}
+              onVariationChange={(updates) =>
+                handleVariationUpdate(selectedVariation, updates)
+              }
+            />
+          </>
         )}
-        {currentPhase === 'research' && (
-          <ResearchPhase
-            project={project}
-            onUpdate={updateProject}
-            onComplete={() => handlePhaseComplete('research')}
-          />
-        )}
-        {currentPhase === 'create' && (
-          <AdCreationPhase
-            project={project}
-            onUpdate={updateProject}
-            onComplete={() => handlePhaseComplete('create')}
-          />
-        )}
-        {currentPhase === 'review' && (
-          <ReviewPhase
-            project={project}
-            onUpdate={updateProject}
-            onComplete={() => handlePhaseComplete('review')}
-          />
-        )}
-        {currentPhase === 'publish' && (
-          <MetaPublishPhase
-            project={project}
-            onUpdate={updateProject}
-          />
-        )}
+
+        {activeTab === 'ai-studio' && <AIStudio />}
+        {activeTab === 'smart-gen' && <SmartGenerator />}
+        {activeTab === 'remix' && <AdRemix />}
+        {activeTab === 'competitor' && <CompetitorSpy />}
+        {activeTab === 'research' && <ConsumerResearch />}
+        {activeTab === 'frameworks' && <FrameworkSelector />}
+        {activeTab === 'diversity' && <DiversityDashboard />}
+        {activeTab === 'projects' && <ProjectManager />}
       </main>
+
+      {/* Export bar */}
+      <ExportBar variation={currentVariation} template={template} />
     </div>
   );
 }
