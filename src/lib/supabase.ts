@@ -1,18 +1,28 @@
-import { createClient as createSupabaseClient } from '@supabase/supabase-js';
+// ============================================
+// AdForge — Supabase Client
+// ============================================
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
-export function createClient() {
-  return createSupabaseClient(supabaseUrl, supabaseAnonKey);
+let supabase: SupabaseClient | null = null;
+
+export function getSupabase(): SupabaseClient | null {
+  if (supabase) return supabase;
+
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  if (!url || !key) {
+    return null;
+  }
+
+  supabase = createClient(url, key);
+  return supabase;
 }
 
-export function createServiceClient() {
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-  return createSupabaseClient(supabaseUrl, serviceRoleKey, {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-    },
-  });
+export function isSupabaseConfigured(): boolean {
+  return !!(
+    process.env.NEXT_PUBLIC_SUPABASE_URL &&
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  );
 }
