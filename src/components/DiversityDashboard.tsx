@@ -1,328 +1,286 @@
-// ============================================
-// DiversityDashboard Component
-// ============================================
-
 'use client';
 
-import React, { useState } from 'react';
+// ============================================
+// AdForge — Diversity Dashboard Component
+// Shows creative diversity score for a batch of ads
+// ============================================
 
-interface RepresentationScore {
-  category: string;
-  score: number;
-  target: number;
-  trend: 'up' | 'down' | 'stable';
-  details: string;
+import React, { useMemo } from 'react';
+import { Variation, TemplateSettings, LayoutType } from '@/lib/types';
+
+interface DiversityDashboardProps {
+  variations: Variation[];
+  settings: TemplateSettings;
+  layout: LayoutType;
 }
 
-interface Campaign {
-  id: string;
-  name: string;
-  platform: string;
-  diversityScore: number;
-  ageGroups: Record<string, number>;
-  genderSplit: Record<string, number>;
-  ethnicityRep: Record<string, number>;
-  inclusionFlags: string[];
-  status: 'approved' | 'needs-review' | 'flagged';
+// ---- Types ----
+type ToneLabel = 'Urgency' | 'Question' | 'Benefit' | 'Feature' | 'Social Proof' | 'Story' | 'Neutral';
+type LengthBucket = 'Short' | 'Medium' | 'Long';
+type EmotionLabel = 'Fear' | 'Excitement' | 'Trust' | 'Curiosity' | 'Relief' | 'Pride';
+
+interface VariationMetrics {
+  tone: ToneLabel;
+  lengthBucket: LengthBucket;
+  emotions: EmotionLabel[];
+  wordCount: number;
+  hasQuestion: boolean;
+  hasSocialProof: boolean;
+  hasUrgency: boolean;
+  hasBenefit: boolean;
 }
 
-const REPRESENTATION_SCORES: RepresentationScore[] = [
-  { category: 'Age Diversity', score: 72, target: 80, trend: 'up', details: 'Underrepresenting 55+ demographic' },
-  { category: 'Gender Balance', score: 85, target: 85, trend: 'stable', details: 'Well balanced across campaigns' },
-  { category: 'Ethnic Representation', score: 68, target: 90, trend: 'up', details: 'Improving but below target' },
-  { category: 'Disability Inclusion', score: 45, target: 70, trend: 'up', details: 'Significant room for improvement' },
-  { category: 'Body Positivity', score: 78, target: 80, trend: 'stable', details: 'Near target, good progress' },
-  { category: 'LGBTQ+ Visibility', score: 62, target: 75, trend: 'up', details: 'Growing representation' },
-];
+// ---- Helpers ----
+function detectTone(text: string): ToneLabel {
+  const lower = text.toLowerCase();
+  if (lower.includes('now') || lower.includes('today') || lower.includes('limited') || lower.includes('last chance') || lower.includes('hurry') || lower.includes('expires')) return 'Urgency';
+  if (text.includes('?')) return 'Question';
+  if (lower.includes('proof') || lower.includes('reviews') || lower.includes('customers') || lower.includes('trusted') || lower.includes('rated') || lower.includes('users')) return 'Social Proof';
+  if (lower.includes('because') || lower.includes('story') || lower.includes('imagine') || lower.includes('when i') || lower.includes('before')) return 'Story';
+  if (lower.includes('get') || lower.includes('save') || lower.includes('boost') || lower.includes('increase') || lower.includes('reduce') || lower.includes('improve') || lower.includes('grow') || lower.includes('unlock')) return 'Benefit';
+  if (lower.includes('feature') || lower.includes('built') || lower.includes('powered') || lower.includes('system') || lower.includes('tool') || lower.includes('platform') || lower.includes('technology')) return 'Feature';
+  return 'Neutral';
+}
 
-const MOCK_CAMPAIGNS: Campaign[] = [
-  {
-    id: '1',
-    name: 'Summer Sale 2024',
-    platform: 'Instagram',
-    diversityScore: 84,
-    ageGroups: { '18-24': 35, '25-34': 40, '35-44': 15, '45+': 10 },
-    genderSplit: { Female: 52, Male: 44, 'Non-binary': 4 },
-    ethnicityRep: { White: 45, Black: 22, Hispanic: 18, Asian: 12, Other: 3 },
-    inclusionFlags: ['Age gap: 45+ underrepresented'],
-    status: 'approved',
-  },
-  {
-    id: '2',
-    name: 'Product Launch B2B',
-    platform: 'LinkedIn',
-    diversityScore: 61,
-    ageGroups: { '18-24': 5, '25-34': 55, '35-44': 30, '45+': 10 },
-    genderSplit: { Female: 35, Male: 63, 'Non-binary': 2 },
-    ethnicityRep: { White: 68, Black: 10, Hispanic: 12, Asian: 8, Other: 2 },
-    inclusionFlags: ['Gender imbalance: male-skewed', 'Low ethnic diversity'],
-    status: 'needs-review',
-  },
-  {
-    id: '3',
-    name: 'Holiday Campaign',
-    platform: 'Facebook',
-    diversityScore: 91,
-    ageGroups: { '18-24': 20, '25-34': 30, '35-44': 28, '45+': 22 },
-    genderSplit: { Female: 50, Male: 46, 'Non-binary': 4 },
-    ethnicityRep: { White: 38, Black: 25, Hispanic: 22, Asian: 12, Other: 3 },
-    inclusionFlags: [],
-    status: 'approved',
-  },
-  {
-    id: '4',
-    name: 'Q1 Retargeting',
-    platform: 'Google',
-    diversityScore: 43,
-    ageGroups: { '18-24': 70, '25-34': 25, '35-44': 4, '45+': 1 },
-    genderSplit: { Female: 28, Male: 70, 'Non-binary': 2 },
-    ethnicityRep: { White: 78, Black: 8, Hispanic: 8, Asian: 5, Other: 1 },
-    inclusionFlags: ['Age skew: youth-only targeting', 'Gender imbalance: male-dominated', 'Low ethnic diversity'],
-    status: 'flagged',
-  },
-];
+function getLengthBucket(text: string): LengthBucket {
+  const words = text.trim().split(/\s+/).length;
+  if (words <= 15) return 'Short';
+  if (words <= 35) return 'Medium';
+  return 'Long';
+}
 
-export default function DiversityDashboard() {
-  const [selectedCampaign, setSelectedCampaign] = useState<Campaign | null>(null);
-  const [activeView, setActiveView] = useState<'overview' | 'campaigns' | 'guidelines'>('overview');
+function detectEmotions(text: string): EmotionLabel[] {
+  const lower = text.toLowerCase();
+  const emotions: EmotionLabel[] = [];
+  if (lower.includes('miss') || lower.includes('lose') || lower.includes('risk') || lower.includes('fail') || lower.includes('afraid') || lower.includes('scared') || lower.includes('danger')) emotions.push('Fear');
+  if (lower.includes('amazing') || lower.includes('excited') || lower.includes('incredible') || lower.includes('wow') || lower.includes('fantastic') || lower.includes('breakthrough')) emotions.push('Excitement');
+  if (lower.includes('guarantee') || lower.includes('proven') || lower.includes('secure') || lower.includes('safe') || lower.includes('reliable') || lower.includes('trusted') || lower.includes('verified')) emotions.push('Trust');
+  if (text.includes('?') || lower.includes('wonder') || lower.includes('discover') || lower.includes('secret') || lower.includes('revealed') || lower.includes('hidden')) emotions.push('Curiosity');
+  if (lower.includes('relief') || lower.includes('finally') || lower.includes('no more') || lower.includes('stop struggling') || lower.includes('end of') || lower.includes('solve')) emotions.push('Relief');
+  if (lower.includes('achieve') || lower.includes('proud') || lower.includes('success') || lower.includes('win') || lower.includes('top') || lower.includes('best') || lower.includes('elite')) emotions.push('Pride');
+  return emotions;
+}
 
-  const statusColor = (s: Campaign['status']) =>
-    s === 'approved' ? 'text-emerald-400' : s === 'flagged' ? 'text-red-400' : 'text-yellow-400';
-  const statusBg = (s: Campaign['status']) =>
-    s === 'approved' ? 'bg-emerald-900/30' : s === 'flagged' ? 'bg-red-900/30' : 'bg-yellow-900/30';
-  const scoreColor = (score: number) =>
-    score >= 80 ? 'text-emerald-400' : score >= 60 ? 'text-yellow-400' : 'text-red-400';
+function analyzeVariation(v: Variation): VariationMetrics {
+  const combined = `${v.headline} ${v.subtext}`;
+  const lower = combined.toLowerCase();
+  return {
+    tone: detectTone(combined),
+    lengthBucket: getLengthBucket(combined),
+    emotions: detectEmotions(combined),
+    wordCount: combined.trim().split(/\s+/).length,
+    hasQuestion: combined.includes('?'),
+    hasSocialProof: lower.includes('proof') || lower.includes('customers') || lower.includes('trusted') || lower.includes('rated'),
+    hasUrgency: lower.includes('now') || lower.includes('today') || lower.includes('limited') || lower.includes('last chance'),
+    hasBenefit: lower.includes('get') || lower.includes('save') || lower.includes('boost') || lower.includes('grow') || lower.includes('unlock'),
+  };
+}
+
+// ---- Diversity Score ----
+function computeDiversityScore(metrics: VariationMetrics[]): number {
+  if (metrics.length <= 1) return metrics.length === 0 ? 0 : 50;
+
+  const tones = new Set(metrics.map((m) => m.tone));
+  const lengths = new Set(metrics.map((m) => m.lengthBucket));
+  const emotionSet = new Set(metrics.flatMap((m) => m.emotions));
+
+  const toneScore = Math.min(tones.size / 4, 1) * 35;  // max 35 pts from 4+ tones
+  const lengthScore = Math.min(lengths.size / 3, 1) * 25; // max 25 pts from 3 lengths
+  const emotionScore = Math.min(emotionSet.size / 4, 1) * 25; // max 25 pts from 4+ emotions
+
+  const hasQuestion = metrics.some((m) => m.hasQuestion);
+  const hasSocialProof = metrics.some((m) => m.hasSocialProof);
+  const hasUrgency = metrics.some((m) => m.hasUrgency);
+  const hasBenefit = metrics.some((m) => m.hasBenefit);
+  const techniqueScore = ([hasQuestion, hasSocialProof, hasUrgency, hasBenefit].filter(Boolean).length / 4) * 15;
+
+  return Math.round(toneScore + lengthScore + emotionScore + techniqueScore);
+}
+
+// ---- Circular Progress Ring ----
+function CircularScore({ score }: { score: number }) {
+  const r = 36;
+  const circ = 2 * Math.PI * r;
+  const dash = (score / 100) * circ;
+  const color =
+    score >= 75 ? '#00cc66' :
+    score >= 50 ? '#0066FF' :
+    score >= 30 ? '#ff9900' :
+    '#ff3355';
 
   return (
-    <div className="flex-1 flex flex-col p-6 overflow-hidden">
-      {/* Header */}
-      <div className="flex items-center gap-4 mb-6">
-        <h2 className="font-semibold text-white text-lg">Diversity & Inclusion Dashboard</h2>
-        <div className="flex bg-gray-800 rounded-lg p-0.5">
-          {(['overview', 'campaigns', 'guidelines'] as const).map((view) => (
-            <button
-              key={view}
-              onClick={() => setActiveView(view)}
-              className={`text-sm px-4 py-1.5 rounded-md capitalize transition-colors ${
-                activeView === view
-                  ? 'bg-gray-700 text-white'
-                  : 'text-gray-400 hover:text-gray-300'
-              }`}
-            >
-              {view}
-            </button>
-          ))}
+    <div className="flex flex-col items-center justify-center shrink-0">
+      <svg width="96" height="96" viewBox="0 0 96 96" className="-rotate-90">
+        {/* Track */}
+        <circle cx="48" cy="48" r={r} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="7" />
+        {/* Progress */}
+        <circle
+          cx="48" cy="48" r={r}
+          fill="none"
+          stroke={color}
+          strokeWidth="7"
+          strokeLinecap="round"
+          strokeDasharray={`${dash} ${circ - dash}`}
+          style={{ transition: 'stroke-dasharray 0.6s ease, stroke 0.4s ease' }}
+        />
+      </svg>
+      <div className="-mt-[68px] flex flex-col items-center">
+        <span className="text-[26px] font-bold leading-none" style={{ color }}>{score}</span>
+        <span className="text-[9px] text-af-text-tertiary uppercase tracking-[0.07em] mt-0.5">Score</span>
+      </div>
+    </div>
+  );
+}
+
+// ---- Mini Bar Chart ----
+function MiniBarChart({ data, label }: { data: [string, number][]; label: string }) {
+  const max = Math.max(...data.map(([, v]) => v), 1);
+  return (
+    <div className="flex flex-col gap-1">
+      <p className="text-[9.5px] font-semibold text-af-text-tertiary uppercase tracking-[0.06em] mb-0.5">{label}</p>
+      {data.map(([name, count]) => (
+        <div key={name} className="flex items-center gap-1.5">
+          <span className="text-[9px] text-af-text-tertiary w-[70px] truncate shrink-0">{name}</span>
+          <div className="flex-1 h-[5px] bg-af-bg-tertiary rounded-full overflow-hidden">
+            <div
+              className="h-full rounded-full bg-af-accent transition-all duration-500"
+              style={{ width: `${(count / max) * 100}%`, opacity: 0.7 + (count / max) * 0.3 }}
+            />
+          </div>
+          <span className="text-[9px] text-af-text-tertiary w-3 text-right shrink-0">{count}</span>
         </div>
+      ))}
+    </div>
+  );
+}
+
+// ---- Tip Generator ----
+function getTips(metrics: VariationMetrics[], score: number): string[] {
+  const tips: string[] = [];
+  const tones = new Set(metrics.map((m) => m.tone));
+  const lengths = new Set(metrics.map((m) => m.lengthBucket));
+
+  if (score < 40) tips.push('Diversity is low — try varying your messaging angles significantly.');
+  if (tones.size < 2) tips.push('All variations use the same tone. Mix in urgency, questions, or social proof.');
+  if (!lengths.has('Short')) tips.push('Add at least one punchy short variation (under 15 words).');
+  if (!lengths.has('Long')) tips.push('Consider one detailed variation that explains the value in depth.');
+  if (!metrics.some((m) => m.hasQuestion)) tips.push('Try adding a question hook to engage curiosity.');
+  if (!metrics.some((m) => m.hasSocialProof)) tips.push('Include social proof (customers, ratings, trust indicators).');
+  if (!metrics.some((m) => m.hasUrgency)) tips.push('Add urgency to at least one variation (limited time, act now).');
+  if (metrics.length < 3) tips.push('Create more variations — 3-5 is ideal for meaningful A/B testing.');
+
+  return tips.slice(0, 3);
+}
+
+// ---- Main Component ----
+export default function DiversityDashboard({
+  variations,
+  settings,
+  layout,
+}: DiversityDashboardProps) {
+  const metrics = useMemo(
+    () => variations.map(analyzeVariation),
+    [variations]
+  );
+
+  const score = useMemo(() => computeDiversityScore(metrics), [metrics]);
+  const tips = useMemo(() => getTips(metrics, score), [metrics, score]);
+
+  // Tone distribution
+  const toneMap = useMemo(() => {
+    const m: Record<string, number> = {};
+    metrics.forEach((mt) => { m[mt.tone] = (m[mt.tone] || 0) + 1; });
+    return Object.entries(m).sort((a, b) => b[1] - a[1]) as [string, number][];
+  }, [metrics]);
+
+  // Length distribution
+  const lengthMap = useMemo(() => {
+    const m: Record<string, number> = { Short: 0, Medium: 0, Long: 0 };
+    metrics.forEach((mt) => { m[mt.lengthBucket]++; });
+    return Object.entries(m) as [string, number][];
+  }, [metrics]);
+
+  // Emotion distribution
+  const emotionMap = useMemo(() => {
+    const m: Record<string, number> = {};
+    metrics.forEach((mt) => mt.emotions.forEach((e) => { m[e] = (m[e] || 0) + 1; }));
+    return Object.entries(m).sort((a, b) => b[1] - a[1]) as [string, number][];
+  }, [metrics]);
+
+  const scoreColor =
+    score >= 75 ? '#00cc66' :
+    score >= 50 ? '#0066FF' :
+    score >= 30 ? '#ff9900' :
+    '#ff3355';
+
+  const scoreLabel =
+    score >= 75 ? 'Excellent' :
+    score >= 50 ? 'Good' :
+    score >= 30 ? 'Fair' :
+    'Low';
+
+  return (
+    <div className="bg-af-bg-secondary border border-af-border-subtle rounded-lg overflow-hidden shrink-0">
+      {/* Header */}
+      <div className="flex items-center justify-between px-3.5 py-2.5 border-b border-af-border-subtle">
+        <div className="flex items-center gap-1.5">
+          <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor" className="text-af-accent">
+            <path d="M8 1a7 7 0 100 14A7 7 0 008 1zm-.75 4.5h1.5v4h-1.5v-4zm.75 6.25a.75.75 0 110-1.5.75.75 0 010 1.5z" />
+          </svg>
+          <span className="text-[11px] font-semibold text-af-text-primary">Creative Diversity</span>
+        </div>
+        <span
+          className="text-[9.5px] font-semibold px-2 py-0.5 rounded"
+          style={{ background: `${scoreColor}18`, color: scoreColor, border: `1px solid ${scoreColor}30` }}
+        >
+          {scoreLabel}
+        </span>
       </div>
 
-      {/* Overview */}
-      {activeView === 'overview' && (
-        <div className="flex-1 overflow-y-auto space-y-6">
-          {/* Score Cards */}
-          <div className="grid grid-cols-3 gap-4">
-            {REPRESENTATION_SCORES.map((item) => (
-              <div key={item.category} className="bg-gray-900 rounded-xl border border-gray-800 p-4">
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-sm text-gray-300">{item.category}</span>
-                  <span className={`text-xs ${item.trend === 'up' ? 'text-emerald-400' : item.trend === 'down' ? 'text-red-400' : 'text-gray-400'}`}>
-                    {item.trend === 'up' ? '↑' : item.trend === 'down' ? '↓' : '→'}
-                  </span>
-                </div>
-                <div className={`text-2xl font-bold mb-1 ${scoreColor(item.score)}`}>{item.score}%</div>
-                <div className="text-xs text-gray-500 mb-3">Target: {item.target}%</div>
-                {/* Progress bar */}
-                <div className="w-full bg-gray-800 rounded-full h-1.5">
-                  <div
-                    className="h-1.5 rounded-full bg-indigo-500 transition-all"
-                    style={{ width: `${(item.score / item.target) * 100}%`, maxWidth: '100%' }}
-                  />
-                </div>
-                <div className="text-xs text-gray-600 mt-2">{item.details}</div>
-              </div>
-            ))}
+      {/* Body */}
+      <div className="p-3.5 flex gap-4">
+        {/* Score ring */}
+        <CircularScore score={score} />
+
+        {/* Right side */}
+        <div className="flex-1 flex flex-col gap-3 min-w-0">
+          {/* Charts row */}
+          <div className="grid grid-cols-3 gap-2">
+            <MiniBarChart data={toneMap} label="Tone" />
+            <MiniBarChart data={lengthMap} label="Length" />
+            <MiniBarChart data={emotionMap.length > 0 ? emotionMap : [['None', 0]]} label="Emotion" />
           </div>
 
-          {/* Summary */}
-          <div className="bg-gray-900 rounded-xl border border-gray-800 p-5">
-            <h3 className="font-medium text-white mb-3">Portfolio Diversity Summary</h3>
-            <div className="grid grid-cols-4 gap-4">
-              {[
-                { label: 'Avg Diversity Score', value: '68%', color: 'text-yellow-400' },
-                { label: 'Campaigns Approved', value: '2/4', color: 'text-emerald-400' },
-                { label: 'Flags Raised', value: '7', color: 'text-red-400' },
-                { label: 'Improvement MoM', value: '+12%', color: 'text-blue-400' },
-              ].map((stat) => (
-                <div key={stat.label} className="text-center">
-                  <div className={`text-2xl font-bold ${stat.color}`}>{stat.value}</div>
-                  <div className="text-xs text-gray-500 mt-1">{stat.label}</div>
+          {/* Tips */}
+          {tips.length > 0 && (
+            <div className="flex flex-col gap-1">
+              {tips.map((tip, i) => (
+                <div key={i} className="flex items-start gap-1.5">
+                  <svg width="10" height="10" viewBox="0 0 16 16" fill="currentColor" className="text-af-accent mt-[1px] shrink-0">
+                    <path d="M8 1a7 7 0 100 14A7 7 0 008 1zm-.75 4.5h1.5v4h-1.5v-4zm.75 6.25a.75.75 0 110-1.5.75.75 0 010 1.5z" />
+                  </svg>
+                  <p className="text-[10px] text-af-text-tertiary leading-[1.4]">{tip}</p>
                 </div>
               ))}
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* Campaigns View */}
-      {activeView === 'campaigns' && (
-        <div className="flex gap-4 flex-1 overflow-hidden">
-          <div className="flex-1 overflow-y-auto space-y-3">
-            {MOCK_CAMPAIGNS.map((campaign) => (
-              <div
-                key={campaign.id}
-                onClick={() => setSelectedCampaign(campaign)}
-                className={`rounded-xl border p-4 cursor-pointer transition-all ${
-                  selectedCampaign?.id === campaign.id
-                    ? 'border-indigo-500 bg-gray-800'
-                    : 'border-gray-800 bg-gray-900 hover:border-gray-700'
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="font-medium text-white">{campaign.name}</div>
-                    <div className="text-xs text-gray-500">{campaign.platform}</div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <span className={`text-lg font-bold ${scoreColor(campaign.diversityScore)}`}>
-                      {campaign.diversityScore}
-                    </span>
-                    <span className={`text-xs px-2 py-1 rounded-full ${statusBg(campaign.status)} ${statusColor(campaign.status)}`}>
-                      {campaign.status}
-                    </span>
-                  </div>
-                </div>
-                {campaign.inclusionFlags.length > 0 && (
-                  <div className="mt-2 flex flex-wrap gap-1">
-                    {campaign.inclusionFlags.map((flag) => (
-                      <span key={flag} className="text-xs bg-red-900/20 text-red-400 border border-red-900/30 px-2 py-0.5 rounded">
-                        ⚠ {flag}
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-
-          {selectedCampaign && (
-            <div className="w-80 bg-gray-900 rounded-xl border border-gray-800 p-5 overflow-y-auto flex flex-col gap-4">
-              <div>
-                <h3 className="font-semibold text-white">{selectedCampaign.name}</h3>
-                <div className="text-xs text-gray-500">{selectedCampaign.platform}</div>
-              </div>
-
-              <div className="text-center">
-                <div className={`text-4xl font-bold ${scoreColor(selectedCampaign.diversityScore)}`}>
-                  {selectedCampaign.diversityScore}
-                </div>
-                <div className="text-xs text-gray-500">Diversity Score</div>
-              </div>
-
-              {/* Age Groups */}
-              <div>
-                <h4 className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">Age Groups</h4>
-                {Object.entries(selectedCampaign.ageGroups).map(([age, pct]) => (
-                  <div key={age} className="flex items-center gap-2 mb-1.5">
-                    <div className="text-xs text-gray-400 w-16">{age}</div>
-                    <div className="flex-1 bg-gray-800 rounded-full h-1.5">
-                      <div className="h-1.5 rounded-full bg-indigo-500" style={{ width: `${pct}%` }} />
-                    </div>
-                    <div className="text-xs text-gray-400 w-8 text-right">{pct}%</div>
-                  </div>
-                ))}
-              </div>
-
-              {/* Gender Split */}
-              <div>
-                <h4 className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">Gender Split</h4>
-                {Object.entries(selectedCampaign.genderSplit).map(([gender, pct]) => (
-                  <div key={gender} className="flex items-center gap-2 mb-1.5">
-                    <div className="text-xs text-gray-400 w-20">{gender}</div>
-                    <div className="flex-1 bg-gray-800 rounded-full h-1.5">
-                      <div className="h-1.5 rounded-full bg-purple-500" style={{ width: `${pct}%` }} />
-                    </div>
-                    <div className="text-xs text-gray-400 w-8 text-right">{pct}%</div>
-                  </div>
-                ))}
-              </div>
-
-              {/* Flags */}
-              {selectedCampaign.inclusionFlags.length > 0 && (
-                <div>
-                  <h4 className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">Issues</h4>
-                  {selectedCampaign.inclusionFlags.map((flag) => (
-                    <div key={flag} className="text-xs text-red-400 bg-red-900/20 rounded p-2 mb-1">
-                      ⚠ {flag}
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              <button className="w-full bg-indigo-600 hover:bg-indigo-500 text-white text-sm py-2 rounded-lg transition-colors">
-                Generate Fix Suggestions
-              </button>
-            </div>
           )}
         </div>
-      )}
+      </div>
 
-      {/* Guidelines */}
-      {activeView === 'guidelines' && (
-        <div className="flex-1 overflow-y-auto">
-          <div className="grid grid-cols-2 gap-4">
-            {[
-              {
-                title: 'Age Representation',
-                icon: '👴',
-                rules: [
-                  'Include at least 3 age demographics per campaign',
-                  'Avoid exclusively youth-focused imagery for broad products',
-                  'Represent 45+ age group in at least 15% of creatives',
-                ],
-              },
-              {
-                title: 'Gender Balance',
-                icon: '⚖️',
-                rules: [
-                  'Target max 60/40 gender split for general audiences',
-                  'Include non-binary representation in brand campaigns',
-                  'Avoid gender stereotypes in product associations',
-                ],
-              },
-              {
-                title: 'Ethnic Diversity',
-                icon: '🌍',
-                rules: [
-                  'No single ethnicity should exceed 50% in brand campaigns',
-                  'Reflect local market demographics when geo-targeting',
-                  'Avoid tokenism — authentic representation over checkboxes',
-                ],
-              },
-              {
-                title: 'Disability Inclusion',
-                icon: '♿',
-                rules: [
-                  '1 in 4 adults has a disability — reflect this in creative',
-                  'Include alt text for all ad images',
-                  'Ensure video ads have captions',
-                ],
-              },
-            ].map((guideline) => (
-              <div key={guideline.title} className="bg-gray-900 rounded-xl border border-gray-800 p-5">
-                <div className="text-2xl mb-2">{guideline.icon}</div>
-                <h3 className="font-semibold text-white mb-3">{guideline.title}</h3>
-                <ul className="space-y-2">
-                  {guideline.rules.map((rule) => (
-                    <li key={rule} className="text-sm text-gray-300 flex items-start gap-2">
-                      <span className="text-indigo-400 mt-0.5">•</span>
-                      {rule}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))}
+      {/* Stats row */}
+      <div className="grid grid-cols-4 border-t border-af-border-subtle">
+        {[
+          { label: 'Variations', value: variations.length },
+          { label: 'Tones', value: new Set(metrics.map((m) => m.tone)).size },
+          { label: 'Emotions', value: new Set(metrics.flatMap((m) => m.emotions)).size },
+          { label: 'Layout', value: layout.charAt(0).toUpperCase() + layout.slice(1) },
+        ].map(({ label, value }) => (
+          <div key={label} className="px-3 py-2 text-center border-r last:border-r-0 border-af-border-subtle">
+            <div className="text-[13px] font-bold text-af-text-primary">{value}</div>
+            <div className="text-[9px] text-af-text-tertiary uppercase tracking-[0.05em]">{label}</div>
           </div>
-        </div>
-      )}
+        ))}
+      </div>
     </div>
   );
 }

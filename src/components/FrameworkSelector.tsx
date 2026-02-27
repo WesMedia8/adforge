@@ -1,256 +1,244 @@
-// ============================================
-// FrameworkSelector Component
-// ============================================
-
 'use client';
 
+// ============================================
+// AdForge — Framework Selector Component
+// Visual card picker for copywriting frameworks
+// ============================================
+
 import React, { useState } from 'react';
+import { CopyFramework } from '@/lib/types';
 
-interface Framework {
-  id: string;
+interface FrameworkSelectorProps {
+  value: CopyFramework | null;
+  onChange: (framework: CopyFramework) => void;
+}
+
+const FRAMEWORKS: Array<{
+  key: CopyFramework;
   name: string;
-  acronym: string;
-  description: string;
-  bestFor: string[];
-  structure: FrameworkStep[];
+  tagline: string;
+  structure: string[];
   color: string;
-  emoji: string;
-  popularity: number;
-}
-
-interface FrameworkStep {
-  letter: string;
-  word: string;
+  bgAlpha: string;
+  borderAlpha: string;
   description: string;
-  example: string;
-}
-
-const FRAMEWORKS: Framework[] = [
+  bestFor: string;
+}> = [
   {
-    id: 'aida',
-    name: 'AIDA',
-    acronym: 'AIDA',
-    description: 'The classic marketing funnel framework for guiding prospects through the buyer journey.',
-    bestFor: ['Brand awareness', 'Top-of-funnel', 'Cold audiences'],
-    color: '#6366f1',
-    emoji: '🎯',
-    popularity: 95,
-    structure: [
-      { letter: 'A', word: 'Attention', description: 'Grab the reader\'s attention immediately', example: '"Stop wasting money on ads that don\'t convert"' },
-      { letter: 'I', word: 'Interest', description: 'Build interest with relevant information', example: '"Most marketers lose 40% of their budget to poor targeting"' },
-      { letter: 'D', word: 'Desire', description: 'Create desire for your product or service', example: '"Imagine cutting your CAC in half while doubling ROAS"' },
-      { letter: 'A', word: 'Action', description: 'Drive a specific action', example: '"Start your free trial today — no credit card required"' },
-    ],
-  },
-  {
-    id: 'pas',
+    key: 'PAS',
     name: 'PAS',
-    acronym: 'PAS',
-    description: 'Problem-Agitate-Solution. A powerful copywriting framework that speaks to pain points.',
-    bestFor: ['Direct response', 'Pain-aware audiences', 'Conversions'],
-    color: '#dc2626',
-    emoji: '💊',
-    popularity: 88,
-    structure: [
-      { letter: 'P', word: 'Problem', description: 'Identify the core pain point', example: '"Your ads are getting clicks but no conversions"' },
-      { letter: 'A', word: 'Agitate', description: 'Amplify the pain to create urgency', example: '"Every day you wait costs you $X in wasted ad spend"' },
-      { letter: 'S', word: 'Solution', description: 'Present your solution as the fix', example: '"AdForge\'s AI optimization finds winning creatives in 24 hours"' },
-    ],
+    tagline: 'Problem → Agitate → Solution',
+    structure: ['Problem', 'Agitate', 'Solution'],
+    color: '#ff5577',
+    bgAlpha: 'rgba(255,51,85,0.08)',
+    borderAlpha: 'rgba(255,51,85,0.2)',
+    description: 'Identify the pain point, amplify the frustration, then present your product as the rescue.',
+    bestFor: 'Pain-point-driven products, problem-aware audiences',
   },
   {
-    id: 'fab',
-    name: 'FAB',
-    acronym: 'FAB',
-    description: 'Features-Advantages-Benefits. Translates product specs into customer value.',
-    bestFor: ['Product ads', 'Feature launches', 'B2B marketing'],
-    color: '#0891b2',
-    emoji: '⚙️',
-    popularity: 75,
-    structure: [
-      { letter: 'F', word: 'Features', description: 'What the product has or does', example: '"AI-powered creative optimization engine"' },
-      { letter: 'A', word: 'Advantages', description: 'Why the feature matters', example: '"Analyzes 1,000+ data points to predict winning ads"' },
-      { letter: 'B', word: 'Benefits', description: 'How it improves the customer\'s life', example: '"You spend less time guessing and more time scaling"' },
-    ],
+    key: 'AIDA',
+    name: 'AIDA',
+    tagline: 'Attention → Interest → Desire → Action',
+    structure: ['Attention', 'Interest', 'Desire', 'Action'],
+    color: '#3399ff',
+    bgAlpha: 'rgba(0,102,255,0.08)',
+    borderAlpha: 'rgba(0,102,255,0.2)',
+    description: 'Classic funnel formula: hook attention, build interest, create desire, drive action.',
+    bestFor: 'Cold audiences, brand awareness campaigns',
   },
   {
-    id: 'bab',
-    name: 'BAB',
-    acronym: 'BAB',
-    description: 'Before-After-Bridge. Creates compelling transformation narratives.',
-    bestFor: ['Transformation stories', 'Case studies', 'Testimonial ads'],
-    color: '#7c3aed',
-    emoji: '🌉',
-    popularity: 82,
-    structure: [
-      { letter: 'B', word: 'Before', description: 'Describe the current painful situation', example: '"You\'re spending 10 hours a week on ad creative. Results are mediocre."' },
-      { letter: 'A', word: 'After', description: 'Paint the ideal future state', example: '"Imagine generating 50 optimized ad variations in minutes"' },
-      { letter: 'B', word: 'Bridge', description: 'Show how your product bridges the gap', example: '"AdForge\'s AI does the heavy lifting so you can focus on strategy"' },
-    ],
+    key: 'EPIC',
+    name: 'EPIC',
+    tagline: 'Engage → Problem → Inform → Call',
+    structure: ['Engage', 'Problem', 'Inform', 'Call-to-Action'],
+    color: '#aa66ff',
+    bgAlpha: 'rgba(153,51,255,0.08)',
+    borderAlpha: 'rgba(153,51,255,0.2)',
+    description: 'Start with engagement, surface the problem, inform with solutions, end with a clear CTA.',
+    bestFor: 'Educational content, SaaS products',
   },
   {
-    id: '4ps',
+    key: '4Ps',
     name: '4 Ps',
-    acronym: '4PS',
-    description: 'Promise-Picture-Proof-Push. A direct response framework with built-in social proof.',
-    bestFor: ['Direct response', 'Email marketing', 'Sales copy'],
-    color: '#b45309',
-    emoji: '📜',
-    popularity: 71,
-    structure: [
-      { letter: 'P', word: 'Promise', description: 'Make a bold, specific promise', example: '"Double your conversion rate in 30 days"' },
-      { letter: 'P', word: 'Picture', description: 'Help them visualize the outcome', example: '"Imagine checking your dashboard to see ROAS climbing daily"' },
-      { letter: 'P', word: 'Proof', description: 'Back up your promise with evidence', example: '"3,200 brands have already achieved this with AdForge"' },
-      { letter: 'P', word: 'Push', description: 'Create urgency to act now', example: '"Start your free trial before prices increase next week"' },
-    ],
+    tagline: 'Promise → Picture → Proof → Push',
+    structure: ['Promise', 'Picture', 'Proof', 'Push'],
+    color: '#ff9900',
+    bgAlpha: 'rgba(255,153,0,0.08)',
+    borderAlpha: 'rgba(255,153,0,0.2)',
+    description: 'Make a bold promise, paint the vision, back it with proof, push them to act.',
+    bestFor: 'High-ticket offers, conversion campaigns',
+  },
+  {
+    key: 'BAB',
+    name: 'BAB',
+    tagline: 'Before → After → Bridge',
+    structure: ['Before', 'After', 'Bridge'],
+    color: '#00cc66',
+    bgAlpha: 'rgba(0,204,102,0.08)',
+    borderAlpha: 'rgba(0,204,102,0.2)',
+    description: "Show where the customer is now, where they could be, and your product as the bridge.",
+    bestFor: 'Transformation products, fitness, finance',
+  },
+  {
+    key: '4Cs',
+    name: '4 Cs',
+    tagline: 'Clear → Concise → Compelling → Credible',
+    structure: ['Clear', 'Concise', 'Compelling', 'Credible'],
+    color: '#ddcc00',
+    bgAlpha: 'rgba(255,221,0,0.08)',
+    borderAlpha: 'rgba(255,221,0,0.2)',
+    description: 'Ensure messaging is crystal clear, to the point, emotionally compelling, and credible.',
+    bestFor: 'B2B, professional services, trust-building',
   },
 ];
 
-export default function FrameworkSelector() {
-  const [selectedFramework, setSelectedFramework] = useState<Framework>(FRAMEWORKS[0]);
-  const [inputText, setInputText] = useState('');
-  const [generatedOutput, setGeneratedOutput] = useState<Record<string, string>>({});
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [activeStep, setActiveStep] = useState<string | null>(null);
-
-  const handleGenerate = async () => {
-    if (!inputText.trim()) return;
-    setIsGenerating(true);
-    await new Promise((r) => setTimeout(r, 1200));
-
-    const mockOutputs: Record<string, string> = {};
-    selectedFramework.structure.forEach((step) => {
-      mockOutputs[step.letter + step.word] = `[${step.word.toUpperCase()}] ${step.example}`;
-    });
-    setGeneratedOutput(mockOutputs);
-    setIsGenerating(false);
-  };
+export default function FrameworkSelector({ value, onChange }: FrameworkSelectorProps) {
+  const [expanded, setExpanded] = useState<CopyFramework | null>(null);
 
   return (
-    <div className="flex-1 flex gap-4 p-6 overflow-hidden">
-      {/* Framework List */}
-      <div className="w-56 flex flex-col gap-2 overflow-y-auto">
-        <h3 className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">Frameworks</h3>
-        {FRAMEWORKS.map((fw) => (
-          <button
-            key={fw.id}
-            onClick={() => { setSelectedFramework(fw); setGeneratedOutput({}); }}
-            className={`text-left rounded-xl border p-3 transition-all ${
-              selectedFramework.id === fw.id
-                ? 'border-indigo-500 bg-gray-800'
-                : 'border-gray-800 bg-gray-900 hover:border-gray-700'
-            }`}
+    <div className="flex flex-col gap-0">
+      {/* Section label */}
+      <div className="flex items-center gap-1.5 px-3.5 py-2.5 border-b border-af-border-subtle shrink-0">
+        <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor" className="text-af-accent">
+          <path d="M3 2h10a1 1 0 011 1v10a1 1 0 01-1 1H3a1 1 0 01-1-1V3a1 1 0 011-1zm2 3v6h2V5H5zm4 0v6h2V5H9z" />
+        </svg>
+        <span className="text-[10.5px] font-semibold text-af-text-tertiary uppercase tracking-[0.08em]">
+          Copy Framework
+        </span>
+        {value && (
+          <span
+            className="ml-auto text-[9px] font-semibold px-1.5 py-0.5 rounded"
+            style={{
+              background: FRAMEWORKS.find((f) => f.key === value)?.bgAlpha,
+              color: FRAMEWORKS.find((f) => f.key === value)?.color,
+              border: `1px solid ${FRAMEWORKS.find((f) => f.key === value)?.borderAlpha}`,
+            }}
           >
-            <div className="flex items-center gap-2 mb-1">
-              <span className="text-lg">{fw.emoji}</span>
-              <span className="font-semibold text-sm text-white">{fw.name}</span>
-            </div>
-            <div className="text-xs text-gray-500 line-clamp-2">{fw.description}</div>
-            <div className="mt-2 flex items-center gap-1">
-              <div className="flex-1 bg-gray-700 rounded-full h-1">
-                <div
-                  className="h-1 rounded-full bg-indigo-500"
-                  style={{ width: `${fw.popularity}%` }}
-                />
-              </div>
-              <span className="text-xs text-gray-500">{fw.popularity}%</span>
-            </div>
-          </button>
-        ))}
+            {value}
+          </span>
+        )}
       </div>
 
-      {/* Main Panel */}
-      <div className="flex-1 flex flex-col gap-4 overflow-hidden">
-        {/* Framework Header */}
-        <div
-          className="rounded-xl p-5 flex items-start gap-4"
-          style={{ backgroundColor: selectedFramework.color + '22', borderColor: selectedFramework.color + '44', border: '1px solid' }}
-        >
-          <div
-            className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl"
-            style={{ backgroundColor: selectedFramework.color }}
-          >
-            {selectedFramework.emoji}
-          </div>
-          <div className="flex-1">
-            <h2 className="font-bold text-white text-xl">{selectedFramework.name}</h2>
-            <p className="text-sm text-gray-300 mt-1">{selectedFramework.description}</p>
-            <div className="flex flex-wrap gap-1 mt-2">
-              {selectedFramework.bestFor.map((tag) => (
-                <span
-                  key={tag}
-                  className="text-xs px-2 py-0.5 rounded-full"
-                  style={{ backgroundColor: selectedFramework.color + '33', color: selectedFramework.color }}
-                >
-                  {tag}
-                </span>
-              ))}
-            </div>
-          </div>
-        </div>
+      {/* Framework cards */}
+      <div className="flex flex-col gap-0 overflow-y-auto" style={{ maxHeight: 340 }}>
+        {FRAMEWORKS.map((fw) => {
+          const isSelected = value === fw.key;
+          const isExpanded = expanded === fw.key;
 
-        {/* Input */}
-        <div className="flex gap-3">
-          <input
-            type="text"
-            placeholder={`Describe your product (e.g., "AI ad platform for SMBs")...`}
-            value={inputText}
-            onChange={(e) => setInputText(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleGenerate()}
-            className="flex-1 bg-gray-800 text-white text-sm rounded-lg px-4 py-2.5 border border-gray-700 focus:outline-none focus:border-indigo-500"
-          />
-          <button
-            onClick={handleGenerate}
-            disabled={isGenerating || !inputText.trim()}
-            className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white px-5 py-2.5 rounded-lg text-sm font-medium transition-colors"
-          >
-            {isGenerating ? 'Generating...' : `Apply ${selectedFramework.acronym}`}
-          </button>
-        </div>
-
-        {/* Structure Steps */}
-        <div className="flex-1 overflow-y-auto space-y-3">
-          {selectedFramework.structure.map((step) => {
-            const key = step.letter + step.word;
-            const isActive = activeStep === key;
-            const hasOutput = !!generatedOutput[key];
-            return (
+          return (
+            <div
+              key={fw.key}
+              className="border-b border-af-border-subtle last:border-b-0 transition-all"
+              style={{
+                background: isSelected ? fw.bgAlpha : 'transparent',
+              }}
+            >
+              {/* Main row */}
               <div
-                key={key}
-                onClick={() => setActiveStep(isActive ? null : key)}
-                className="rounded-xl border border-gray-800 bg-gray-900 p-4 cursor-pointer hover:border-gray-700 transition-all"
+                className="flex items-center gap-2.5 px-3.5 py-2.5 cursor-pointer select-none"
+                onClick={() => onChange(fw.key)}
               >
-                <div className="flex items-center gap-3">
-                  <div
-                    className="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-white"
-                    style={{ backgroundColor: selectedFramework.color }}
-                  >
-                    {step.letter}
-                  </div>
-                  <div className="flex-1">
-                    <div className="font-semibold text-white text-sm">{step.word}</div>
-                    <div className="text-xs text-gray-500">{step.description}</div>
-                  </div>
-                  {hasOutput && <div className="w-2 h-2 rounded-full bg-emerald-400" />}
+                {/* Selection indicator */}
+                <div
+                  className="w-[14px] h-[14px] rounded-full border-2 flex items-center justify-center shrink-0 transition-all"
+                  style={{
+                    borderColor: isSelected ? fw.color : 'var(--border-default)',
+                    background: isSelected ? fw.color : 'transparent',
+                  }}
+                >
+                  {isSelected && (
+                    <svg width="7" height="7" viewBox="0 0 8 8" fill="white">
+                      <path d="M1 4l2 2 4-4" stroke="white" strokeWidth="1.5" fill="none" strokeLinecap="round" />
+                    </svg>
+                  )}
                 </div>
 
-                {isActive && (
-                  <div className="mt-3 pt-3 border-t border-gray-800">
-                    <div className="text-xs text-gray-400 mb-2">Example:</div>
-                    <div className="text-sm text-gray-300 italic">{step.example}</div>
-                    {hasOutput && (
-                      <div className="mt-3">
-                        <div className="text-xs text-indigo-400 mb-1">Generated Output:</div>
-                        <div className="text-sm text-white bg-indigo-900/20 rounded-lg p-3">
-                          {generatedOutput[key]}
-                        </div>
-                      </div>
-                    )}
+                {/* Badge */}
+                <span
+                  className="text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0"
+                  style={{
+                    background: isSelected ? fw.bgAlpha : 'var(--bg-tertiary)',
+                    color: isSelected ? fw.color : 'var(--text-tertiary)',
+                    border: `1px solid ${isSelected ? fw.borderAlpha : 'var(--border-default)'}`,
+                    minWidth: 28,
+                    textAlign: 'center',
+                  }}
+                >
+                  {fw.name}
+                </span>
+
+                {/* Text */}
+                <div className="flex-1 min-w-0">
+                  <div
+                    className="text-[11px] font-medium truncate"
+                    style={{ color: isSelected ? fw.color : 'var(--text-secondary)' }}
+                  >
+                    {fw.tagline}
                   </div>
-                )}
+                </div>
+
+                {/* Expand button */}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setExpanded(isExpanded ? null : fw.key);
+                  }}
+                  className="w-[20px] h-[20px] flex items-center justify-center text-af-text-tertiary hover:text-af-text-primary transition-all shrink-0"
+                >
+                  <svg
+                    width="10"
+                    height="10"
+                    viewBox="0 0 16 16"
+                    fill="currentColor"
+                    className={`transition-transform duration-150 ${isExpanded ? 'rotate-180' : ''}`}
+                  >
+                    <path d="M4 6l4 4 4-4" />
+                  </svg>
+                </button>
               </div>
-            );
-          })}
-        </div>
+
+              {/* Expanded detail */}
+              {isExpanded && (() => {
+                return (
+                  <div
+                    className="px-3.5 pb-3 flex flex-col gap-2"
+                    style={{ borderTop: `1px solid ${fw.borderAlpha}`, background: fw.bgAlpha }}
+                  >
+                    {/* Structure */}
+                    <div className="flex items-center gap-1 pt-2.5">
+                      {fw.structure.map((step, i) => (
+                        <React.Fragment key={step}>
+                          <span
+                            className="text-[9.5px] font-semibold px-1.5 py-[2px] rounded"
+                            style={{ background: fw.bgAlpha, color: fw.color, border: `1px solid ${fw.borderAlpha}` }}
+                          >
+                            {step}
+                          </span>
+                          {i < fw.structure.length - 1 && (
+                            <svg width="8" height="8" viewBox="0 0 8 8" fill="currentColor" style={{ color: fw.color, opacity: 0.5 }}>
+                              <path d="M2 4h4M4 2l2 2-2 2" />
+                            </svg>
+                          )}
+                        </React.Fragment>
+                      ))}
+                    </div>
+
+                    {/* Description */}
+                    <p className="text-[10px] text-af-text-secondary leading-[1.5]">{fw.description}</p>
+
+                    {/* Best for */}
+                    <div className="flex items-center gap-1.5">
+                      <svg width="9" height="9" viewBox="0 0 16 16" fill="currentColor" style={{ color: fw.color }}>
+                        <path d="M8 1l2 4 4.5.7-3.2 3.2.8 4.6L8 11.3 3.9 13.5l.8-4.6L1.5 5.7 6 5z" />
+                      </svg>
+                      <span className="text-[9.5px] text-af-text-tertiary">{fw.bestFor}</span>
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+          );
+        })}
       </div>
     </div>
   );
