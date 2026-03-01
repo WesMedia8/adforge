@@ -10,6 +10,8 @@ export interface CompetitorAd {
   firstSeen: string;
   lastSeen: string;
   isActive: boolean;
+  pageName?: string;
+  creativeBody?: string;
 }
 
 export interface CompetitorProfile {
@@ -33,4 +35,31 @@ export interface CompetitorAnalysis {
   };
   recommendations: string[];
   lastUpdated: string;
+}
+
+export interface RemixRequest {
+  originalAd: CompetitorAd | {
+    headline: string;
+    body: string;
+    cta?: string;
+    description?: string;
+  };
+  brandName?: string;
+  productDescription?: string;
+  tone: 'professional' | 'casual' | 'edgy' | 'luxury' | 'playful' | 'urgent' | 'bold';
+  framework: 'auto' | 'PAS' | 'AIDA' | 'FAB' | 'BAB' | 'EPIC' | '4Ps' | 'FOUR_Ps' | '4Cs';
+  customInstructions?: string;
+}
+
+export interface RemixedAd {
+  id: string;
+  headline: string;
+  body: string;
+  cta: string;
+  description?: string;
+  framework: string;
+  angle: string;
+  tone: string;
+  hookType: string;
+  changesSummary: string;
 }

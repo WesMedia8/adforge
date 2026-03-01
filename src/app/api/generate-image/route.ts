@@ -42,10 +42,12 @@ export async function POST(request: NextRequest) {
       quality: 'standard',
     });
 
-    const imageUrl = response.data[0].url;
-    const revisedPrompt = response.data[0].revised_prompt;
+    const imageUrl = response.data?.[0]?.url;
+    const revisedPrompt = response.data?.[0]?.revised_prompt;
 
-    return NextResponse.json({ 
+    return NextResponse.json({
+      success: true,
+      image_url: imageUrl,
       imageUrl,
       revisedPrompt,
     });

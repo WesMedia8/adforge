@@ -8,6 +8,8 @@ export type LogoPosition = 'bottom-left' | 'bottom-center' | 'bottom-right';
 export type ImageType = 'background' | 'standalone';
 
 // Smart Generator theme tags for generated ad variations
+export type CopyFramework = 'PAS' | 'AIDA' | 'EPIC' | '4Ps' | 'BAB' | '4Cs';
+
 export type AdTheme =
   | 'pain-point'
   | 'outcome'
