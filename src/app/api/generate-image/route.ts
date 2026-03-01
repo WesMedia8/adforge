@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+function getOpenAI() {
+  return new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
 
     const enhancedPrompt = `${prompt}. Style: ${styleGuide}. High quality advertising image, suitable for Meta/Facebook/Instagram ads. No text overlay.`;
 
-    const response = await openai.images.generate({
+    const response = await getOpenAI().images.generate({
       model: 'dall-e-3',
       prompt: enhancedPrompt,
       n: 1,

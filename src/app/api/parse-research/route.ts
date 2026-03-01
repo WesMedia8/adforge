@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+function getOpenAI() {
+  return new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -44,7 +44,7 @@ Extract and structure this information as JSON:
   "callToActions": ["cta1", "cta2"]
 }`;
 
-    const completion = await openai.chat.completions.create({
+    const completion = await getOpenAI().chat.completions.create({
       model: 'gpt-4-turbo-preview',
       messages: [{ role: 'user', content: prompt }],
       response_format: { type: 'json_object' },
